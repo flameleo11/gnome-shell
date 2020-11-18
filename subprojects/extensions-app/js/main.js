@@ -138,7 +138,7 @@ var ExtensionsWindow = GObject.registerClass({
             (w, event) => this._searchBar.handle_event(event));
 
         this._searchTerms = [];
-        this._searchEntry.connect('search-changed', () => {
+        this._searchId = this._searchEntry.connect('search-changed', () => {
             const { text } = this._searchEntry;
             if (text === '')
                 this._searchTerms = [];
@@ -173,14 +173,40 @@ var ExtensionsWindow = GObject.registerClass({
             visible: true,
         }));
 
-        this._shellProxy.connectSignal('ExtensionStateChanged',
-            this._onExtensionStateChanged.bind(this));
+        this._extensionStateChangedId =
+            this._shellProxy.connectSignal('ExtensionStateChanged',
+                this._onExtensionStateChanged.bind(this));
 
-        this._shellProxy.connect('g-properties-changed',
-            this._onUserExtensionsEnabledChanged.bind(this));
+        this._propertiesChangedId =
+            this._shellProxy.connect('g-properties-changed',
+                this._onUserExtensionsEnabledChanged.bind(this));
         this._onUserExtensionsEnabledChanged();
 
         this._scanExtensions();
+    }
+
+    vfunc_unrealize() {
+        super.vfunc_unrealize();
+
+        this._exporter = null;
+
+        if (this._extensionStateChangedId)
+            this._shellProxy.disconnectSignal(this._extensionStateChangedId);
+        this._extensionStateChangedId = 0;
+
+        if (this._propertiesChangedId)
+            this._shellProxy.disconnect(this._propertiesChangedId);
+        this._propertiesChangedId = 0;
+
+        for (const actionName of this.list_actions())
+            this.remove_action(actionName);
+
+        this._userList.set_sort_func(null);
+        this._userList.set_filter_func(null);
+        this._systemList.set_sort_func(null);
+        this._systemList.set_filter_func(null);
+
+        this._searchEntry.disconnect(this._searchId);
     }
 
     get _shellProxy() {
