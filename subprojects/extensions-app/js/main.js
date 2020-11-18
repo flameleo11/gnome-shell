@@ -50,7 +50,11 @@ class Application extends Gtk.Application {
 
     vfunc_activate() {
         this._shellProxy.CheckForUpdatesRemote();
-        this._window.present();
+
+        let { activeWindow } = this;
+        if (!activeWindow)
+            activeWindow = new ExtensionsWindow({ application: this });
+        activeWindow.present();
     }
 
     vfunc_startup() {
@@ -68,15 +72,13 @@ class Application extends Gtk.Application {
             Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
 
         const action = new Gio.SimpleAction({ name: 'quit' });
-        action.connect('activate', () => this._window.close());
+        action.connect('activate', () => this.active_window.close());
         this.add_action(action);
 
         this.set_accels_for_action('app.quit', ['<Primary>q']);
 
         this._shellProxy = new GnomeShellProxy(Gio.DBus.session,
             'org.gnome.Shell.Extensions', '/org/gnome/Shell/Extensions');
-
-        this._window = new ExtensionsWindow({ application: this });
     }
 });
 
